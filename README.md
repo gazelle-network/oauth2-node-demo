@@ -17,7 +17,7 @@ Finally, run the demo with just `node server.js`:
 
 ```bash
 export GAZELLE_APP_ID=YOUR_ID
-export GAZELLE_APP_SECRET=YOUR_SECRE
+export GAZELLE_APP_SECRET=YOUR_SECRET
 export GAZELLE_APP_CALLBACK_URL=http://localhost:4567/callback
 
 node server.js
