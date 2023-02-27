@@ -1,5 +1,6 @@
-let express = require('express');
-let axios = require('axios');
+const express = require('express');
+const axios = require('axios');
+const crypto = require('crypto');
 
 // Normally you'd want to save your users' access tokens somewhere permanent so that they can be retrieved
 // and used as needed.  For simplicity of this demo we're just sticking them into a singleton that will go
@@ -60,8 +61,22 @@ app.get('/', async (request, response) => {
   // user to authorize our app.  Typically you'd be checking for an existing access token from some sort
   // of persistent storage, but in this demo we're simply using an in-memory object.
   if (!in_memory_storage.access_token) {
+
+    // Optional.  You can include a state parameter to help prevent CSRF attacks.  This state parameter
+    // can be anything you'd like, but it's typically a random string.  Since it is a string, you can actually
+    // pass JSON and a small unique identifier for the user in your system if you'd like.
+    // Here's an example of how you might do that:
+    let stateStr = JSON.stringify({
+      user_id: 123,
+      csrf_token: crypto.randomBytes(16).toString('hex')
+    });
+
+    // If you're passing state along, typically here you would save the CSRF somewhere that can be retrieved
+    // later when the user is redirected back to your app.  For this demo we're just going to pass it along
+    // and not verify it, but you should definitely do this in a real app.
+
     // Create an authorization URL as described at: https://gazelleapp.io/docs/graphql/private/authentication#authorization-flow
-    const authUrl = `https://gazelleapp.io/developer/oauth/authorize?client_id=${gazelle_app_client_id}&response_type=code&redirect_uri=${gazelle_app_callback_url}`;
+    const authUrl = `https://gazelleapp.io/developer/oauth/authorize?client_id=${gazelle_app_client_id}&response_type=code&redirect_uri=${gazelle_app_callback_url}&state=${stateStr}`;
 
     // Render the not_authenticated_yet template and return it on the response.
     response.render("not_authenticated_yet", {
@@ -79,6 +94,19 @@ app.get('/', async (request, response) => {
 app.get('/callback', async (request, response) => {
   // Pull the temporary grant code from the request's query parameter named 'code'
   const grantToken = request.query.code;
+
+  // Optional:  If you passed state in the query parameter of the authorize URL, it will be passed back to you
+  // in the state query parameter of the callback URL.  You can use this to verify that the user is who they
+  // say they are by verifying the CSRF token you included, and pull off an identifier for the user in your
+  // system if you included one.
+  if (request.query.state) {
+    const state = JSON.parse(request.query.state)
+    console.log(state);
+
+    const my_user_id = state["user_id"];
+    const my_csrf_token = state["csrf_token"];
+    //  ... do something with these values ...
+  }
 
   // Use the temporary grant token to retrieve an access token
   const tokenResponse = await axios.post("https://gazelleapp.io/developer/oauth/token", {
@@ -99,4 +127,4 @@ app.get('/callback', async (request, response) => {
 });
 
 // Start up the Express server.
-app.listen(4567, () => console.log('Gazelle OAuth 2.0 demo app listening on port 4000'));
+app.listen(4567, () => console.log('Gazelle OAuth 2.0 demo app listening on port 4567'));
